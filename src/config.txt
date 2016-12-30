@@ -1,0 +1,5 @@
+[PiCAM-config]
+dir = ./lapse/cap
+res-h = 200
+res-w = 200 
+prefix = cap

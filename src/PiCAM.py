@@ -6,6 +6,7 @@ from picamera import PiCamera
 import tkMessageBox
 import time
 from PIL import ImageTk, Image
+import ConfigParser
 
 class App:
     def __init__(self,master):
@@ -71,7 +72,7 @@ class App:
         for n in range(8):
             master.grid_rowconfigure(n,weight=1)
 
-	
+	self.OpenConfig()
 	self.ProcessQueueLoop()
         
 
@@ -96,7 +97,7 @@ class App:
         self.ProgressBar["maximum"] = self.CameraTotalFrames-1
         self.ProgressBar["value"] = 0
 
-	CaptureInfo = [1080, 720, self.CameraInterval, self.CameraTotalFrames]
+	CaptureInfo = [int(self.ConfigFile.CamResH), int(self.ConfigFile.CamResW), self.CameraInterval, self.CameraTotalFrames, self.ConfigFile.DirPath, self.ConfigFile.Prefix ]
 	self.OutgoingQueue.put(CaptureInfo)
 
     def ProcessQueueLoop(self):
@@ -141,6 +142,39 @@ class App:
 	else:
 		return True
 
+
+    def OpenConfig(self):
+        # location to save files, resolution, prefix
+        self.ConfigFile = ConfigParser.ConfigParser()  #  
+        self.ConfigFile.readfp(open("config.txt","r")) # open the config file
+        
+
+        try:
+            self.ConfigFile.DirPath = self.ConfigFile.get("PiCAM-config","dir") # get the path to put the captures
+        except:
+            print "Error while getting capture directory"
+            self.ConfigFile.DirPath = "./lapse"            # setup the default directory
+
+        try:
+            self.ConfigFile.CamResH = self.ConfigFile.get("PiCAM-config","res-h")
+        except:
+            print "Error while getting camera resolution height"
+            self.ConfigFile.CamResH = "720"
+
+        try:
+            self.ConfigFile.CamResW = self.ConfigFile.get("PiCAM-config","res-w")
+        except:
+            print "Error while getting camera resolution width"
+            self.ConfigFile.CamResW = "1080"
+
+        try:
+            self.ConfigFile.Prefix = self.ConfigFile.get("PiCAM-config","prefix")
+        except:
+            print "Error while getting prefix"
+            self.ConfigFile.Prefix = "img"
+                
+        
+
 #################
 # Program setup #
 #################
@@ -175,8 +209,8 @@ class myThread (threading.Thread):
 			for i in range(task[3]):                          # if the task is capturing (it will fork to except if not)
                                 currentTime=int(round(time.time()*10))  # get the current time in ms
 				camera.resolution = (task[0], task[1])                 # setup the camera for the proper res
-				camera.capture('./lapse/img%03d.jpg' % i)              # capture the image 
-				f = ['uppreview','./lapse/img%03d.jpg' % i,i]          # send the GUI the image to display 
+				camera.capture(task[4] + "/" + task[5] + "%03d.jpg" % i)              # capture the image 
+				f = ['uppreview',task[4] + "/" + task[5] + "%03d.jpg" % i, i]          # send the GUI the image to display 
 				app.IncomingQueue.put(f)                               #
                                 diffTime=0L                                            # wait for the required interval 
 				while(diffTime<=task[2]):                              # 
